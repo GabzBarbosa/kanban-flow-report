@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MoreVertical, Edit, Trash2, Calendar, AlertCircle } from 'lucide-react';
+import { MoreVertical, Edit, Trash2, Calendar, User, Building } from 'lucide-react';
 import { Draggable } from '@hello-pangea/dnd';
 import { Task } from '@/types/task';
 import { Card } from '@/components/ui/card';
@@ -89,6 +89,23 @@ export function TaskCard({ task, index, onEdit, onDelete }: TaskCardProps) {
             <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
               {task.description}
             </p>
+          )}
+
+          {(task.assignee || task.area) && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {task.assignee && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 rounded-md px-2 py-1">
+                  <User className="h-3 w-3" />
+                  {task.assignee}
+                </div>
+              )}
+              {task.area && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 rounded-md px-2 py-1">
+                  <Building className="h-3 w-3" />
+                  {task.area}
+                </div>
+              )}
+            </div>
           )}
 
           <div className="flex items-center text-xs text-muted-foreground mt-auto">

@@ -40,6 +40,8 @@ export function TaskModal({ isOpen, onClose, onSave, task, defaultStatus = 'todo
   const [tests, setTests] = useState('');
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
   const [research, setResearch] = useState('');
+  const [assignee, setAssignee] = useState('');
+  const [area, setArea] = useState('');
   const [newEvolution, setNewEvolution] = useState('');
 
   useEffect(() => {
@@ -53,6 +55,8 @@ export function TaskModal({ isOpen, onClose, onSave, task, defaultStatus = 'todo
       setTests(task.tests || '');
       setAttachments(task.attachments || []);
       setResearch(task.research || '');
+      setAssignee(task.assignee || '');
+      setArea(task.area || '');
     } else {
       setTitle('');
       setDescription('');
@@ -63,6 +67,8 @@ export function TaskModal({ isOpen, onClose, onSave, task, defaultStatus = 'todo
       setTests('');
       setAttachments([]);
       setResearch('');
+      setAssignee('');
+      setArea('');
     }
     setNewEvolution('');
   }, [task, defaultStatus]);
@@ -81,6 +87,8 @@ export function TaskModal({ isOpen, onClose, onSave, task, defaultStatus = 'todo
       tests: tests.trim(),
       attachments,
       research: research.trim(),
+      assignee: assignee.trim() || undefined,
+      area: area.trim() || undefined,
     });
 
     handleClose();
@@ -96,6 +104,8 @@ export function TaskModal({ isOpen, onClose, onSave, task, defaultStatus = 'todo
     setTests('');
     setAttachments([]);
     setResearch('');
+    setAssignee('');
+    setArea('');
     setNewEvolution('');
     onClose();
   };
@@ -160,6 +170,34 @@ export function TaskModal({ isOpen, onClose, onSave, task, defaultStatus = 'todo
                 className="w-full"
                 autoFocus
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-2">
+                <Label htmlFor="assignee" className="text-sm font-medium">
+                  Responsável
+                </Label>
+                <Input
+                  id="assignee"
+                  value={assignee}
+                  onChange={(e) => setAssignee(e.target.value)}
+                  placeholder="Nome da pessoa responsável"
+                  className="w-full"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="area" className="text-sm font-medium">
+                  Área/Departamento
+                </Label>
+                <Input
+                  id="area"
+                  value={area}
+                  onChange={(e) => setArea(e.target.value)}
+                  placeholder="Ex: Desenvolvimento, Marketing"
+                  className="w-full"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2">

@@ -22,6 +22,8 @@ export interface Task {
   description: string;
   status: TaskStatus;
   priority: TaskPriority;
+  assignee?: string;
+  area?: string;
   evolutions: TaskEvolution[];
   results: string;
   tests: string;
