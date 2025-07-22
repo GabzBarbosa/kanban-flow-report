@@ -95,9 +95,10 @@ const sampleTasks: Task[] = [
 
 interface KanbanBoardProps {
   onTasksChange?: (tasks: Task[]) => void;
+  onEditTask?: (task: Task) => void;
 }
 
-export function KanbanBoard({ onTasksChange }: KanbanBoardProps) {
+export function KanbanBoard({ onTasksChange, onEditTask }: KanbanBoardProps) {
   const [columns, setColumns] = useState<TaskColumn[]>(initialColumns);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -195,6 +196,7 @@ export function KanbanBoard({ onTasksChange }: KanbanBoardProps) {
   const handleEditTask = (task: Task) => {
     setEditingTask(task);
     setIsTaskModalOpen(true);
+    onEditTask?.(task);
   };
 
   const handleDeleteTask = (taskId: string) => {
