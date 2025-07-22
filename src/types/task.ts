@@ -24,6 +24,7 @@ export interface Task {
   priority: TaskPriority;
   assignee?: string;
   area?: string;
+  dueDate?: Date;
   evolutions: TaskEvolution[];
   results: string;
   tests: string;

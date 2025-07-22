@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { format } from 'date-fns';
 import { Task, TaskPriority, TaskStatus, TaskEvolution, TaskAttachment } from '@/types/task';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -20,7 +21,14 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
-import { Plus, X, FileText, Calendar } from 'lucide-react';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Plus, X, FileText, Calendar, CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface TaskModalProps {
   isOpen: boolean;
@@ -42,6 +50,7 @@ export function TaskModal({ isOpen, onClose, onSave, task, defaultStatus = 'todo
   const [research, setResearch] = useState('');
   const [assignee, setAssignee] = useState('');
   const [area, setArea] = useState('');
+  const [dueDate, setDueDate] = useState<Date | undefined>();
   const [newEvolution, setNewEvolution] = useState('');
 
   useEffect(() => {
@@ -57,6 +66,7 @@ export function TaskModal({ isOpen, onClose, onSave, task, defaultStatus = 'todo
       setResearch(task.research || '');
       setAssignee(task.assignee || '');
       setArea(task.area || '');
+      setDueDate(task.dueDate ? new Date(task.dueDate) : undefined);
     } else {
       setTitle('');
       setDescription('');
@@ -69,6 +79,7 @@ export function TaskModal({ isOpen, onClose, onSave, task, defaultStatus = 'todo
       setResearch('');
       setAssignee('');
       setArea('');
+      setDueDate(undefined);
     }
     setNewEvolution('');
   }, [task, defaultStatus]);
@@ -89,6 +100,7 @@ export function TaskModal({ isOpen, onClose, onSave, task, defaultStatus = 'todo
       research: research.trim(),
       assignee: assignee.trim() || undefined,
       area: area.trim() || undefined,
+      dueDate,
     });
 
     handleClose();
@@ -106,6 +118,7 @@ export function TaskModal({ isOpen, onClose, onSave, task, defaultStatus = 'todo
     setResearch('');
     setAssignee('');
     setArea('');
+    setDueDate(undefined);
     setNewEvolution('');
     onClose();
   };
@@ -198,6 +211,35 @@ export function TaskModal({ isOpen, onClose, onSave, task, defaultStatus = 'todo
                   className="w-full"
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="dueDate" className="text-sm font-medium">
+                Data Limite
+              </Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !dueDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dueDate ? format(dueDate, "dd/MM/yyyy") : <span>Selecionar data limite</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={dueDate}
+                    onSelect={setDueDate}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="grid grid-cols-2 gap-2">

@@ -33,6 +33,7 @@ const sampleTasks: Task[] = [
     description: 'Instalar dependências e configurar estrutura inicial do projeto Kanban',
     status: 'done',
     priority: 'high',
+    dueDate: new Date('2024-01-20'),
     evolutions: [
       { id: uuidv4(), content: 'Projeto criado e estrutura inicial configurada', createdAt: new Date('2024-01-15') }
     ],
@@ -49,6 +50,7 @@ const sampleTasks: Task[] = [
     description: 'Adicionar funcionalidade para arrastar tarefas entre as colunas',
     status: 'progress',
     priority: 'medium',
+    dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 dias a partir de hoje
     evolutions: [
       { id: uuidv4(), content: 'Biblioteca @hello-pangea/dnd instalada', createdAt: new Date('2024-01-16') }
     ],
@@ -65,6 +67,7 @@ const sampleTasks: Task[] = [
     description: 'Desenvolver componentes visuais e design responsivo',
     status: 'todo',
     priority: 'medium',
+    dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 dias a partir de hoje
     evolutions: [],
     results: '',
     tests: '',
@@ -79,6 +82,7 @@ const sampleTasks: Task[] = [
     description: 'Implementar geração de relatórios semanais e mensais',
     status: 'todo',
     priority: 'low',
+    dueDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 dia atrás (vencida)
     evolutions: [],
     results: '',
     tests: '',
@@ -89,7 +93,11 @@ const sampleTasks: Task[] = [
   },
 ];
 
-export function KanbanBoard() {
+interface KanbanBoardProps {
+  onTasksChange?: (tasks: Task[]) => void;
+}
+
+export function KanbanBoard({ onTasksChange }: KanbanBoardProps) {
   const [columns, setColumns] = useState<TaskColumn[]>(initialColumns);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -97,6 +105,12 @@ export function KanbanBoard() {
   const [deletingTask, setDeletingTask] = useState<Task | undefined>();
   const [defaultStatus, setDefaultStatus] = useState<TaskStatus>('todo');
   const { toast } = useToast();
+
+  // Notify parent component about task changes
+  useEffect(() => {
+    const allTasks = columns.flatMap(column => column.tasks);
+    onTasksChange?.(allTasks);
+  }, [columns, onTasksChange]);
 
   // Carregar tarefas de exemplo na inicialização
   useEffect(() => {

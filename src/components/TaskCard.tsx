@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MoreVertical, Edit, Trash2, Calendar, User, Building } from 'lucide-react';
+import { MoreVertical, Edit, Trash2, Calendar, User, Building, AlertTriangle, Clock } from 'lucide-react';
 import { Draggable } from '@hello-pangea/dnd';
 import { Task } from '@/types/task';
 import { Card } from '@/components/ui/card';
@@ -26,8 +26,28 @@ const priorityConfig = {
   high: { color: 'bg-destructive text-destructive-foreground', icon: '●' }
 };
 
+const getDueDateStatus = (dueDate?: Date) => {
+  if (!dueDate) return null;
+  
+  const now = new Date();
+  const due = new Date(dueDate);
+  const diffTime = due.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays < 0) {
+    return { status: 'overdue', color: 'bg-destructive text-destructive-foreground', icon: AlertTriangle, text: 'Vencida' };
+  } else if (diffDays <= 2) {
+    return { status: 'warning', color: 'bg-warning text-warning-foreground', icon: Clock, text: `${diffDays}d restante${diffDays !== 1 ? 's' : ''}` };
+  } else if (diffDays <= 7) {
+    return { status: 'upcoming', color: 'bg-muted text-muted-foreground', icon: Calendar, text: `${diffDays}d restante${diffDays !== 1 ? 's' : ''}` };
+  }
+  
+  return null;
+};
+
 export function TaskCard({ task, index, onEdit, onDelete }: TaskCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const dueDateStatus = getDueDateStatus(task.dueDate);
 
   return (
     <Draggable draggableId={task.id} index={index}>
@@ -46,10 +66,16 @@ export function TaskCard({ task, index, onEdit, onDelete }: TaskCardProps) {
           onMouseLeave={() => setIsHovered(false)}
         >
           <div className="flex items-start justify-between mb-2">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Badge className={priorityConfig[task.priority].color}>
                 {priorityConfig[task.priority].icon} {task.priority}
               </Badge>
+              {dueDateStatus && (
+                <Badge className={dueDateStatus.color}>
+                  <dueDateStatus.icon className="h-3 w-3 mr-1" />
+                  {dueDateStatus.text}
+                </Badge>
+              )}
             </div>
             
             <DropdownMenu>
@@ -108,9 +134,16 @@ export function TaskCard({ task, index, onEdit, onDelete }: TaskCardProps) {
             </div>
           )}
 
-          <div className="flex items-center text-xs text-muted-foreground mt-auto">
-            <Calendar className="h-3 w-3 mr-1" />
-            {new Date(task.createdAt).toLocaleDateString('pt-BR')}
+          <div className="flex items-center justify-between text-xs text-muted-foreground mt-auto">
+            <div className="flex items-center">
+              <Calendar className="h-3 w-3 mr-1" />
+              {new Date(task.createdAt).toLocaleDateString('pt-BR')}
+            </div>
+            {task.dueDate && (
+              <div className="flex items-center">
+                <span className="text-xs">Prazo: {new Date(task.dueDate).toLocaleDateString('pt-BR')}</span>
+              </div>
+            )}
           </div>
         </Card>
       )}

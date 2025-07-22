@@ -1,8 +1,12 @@
+import { useState } from 'react';
 import { Plus, BarChart3, Download } from 'lucide-react';
 import { KanbanBoard } from '@/components/KanbanBoard';
+import { N8nConfig } from '@/components/N8nConfig';
 import { Button } from '@/components/ui/button';
 
 const Index = () => {
+  const [tasks, setTasks] = useState([]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background">
       {/* Header */}
@@ -14,7 +18,7 @@ const Index = () => {
                 TaskFlow
               </h1>
               <p className="text-sm text-muted-foreground">
-                Gerencie suas tarefas de forma eficiente
+                Gerencie suas tarefas com prazos inteligentes
               </p>
             </div>
             
@@ -33,8 +37,15 @@ const Index = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto">
-        <KanbanBoard />
+      <main className="container mx-auto px-6 py-6">
+        <div className="grid lg:grid-cols-4 gap-6">
+          <div className="lg:col-span-3">
+            <KanbanBoard onTasksChange={setTasks} />
+          </div>
+          <div className="lg:col-span-1">
+            <N8nConfig tasks={tasks} />
+          </div>
+        </div>
       </main>
     </div>
   );
