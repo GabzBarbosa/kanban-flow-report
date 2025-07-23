@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Task } from '@/types/task';
-import { format, startOfQuarter, endOfQuarter, getQuarter, getYear, eachMonthOfInterval, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isWithinInterval } from 'date-fns';
+import { format, startOfQuarter, endOfQuarter, getQuarter, getYear, eachMonthOfInterval, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isWithinInterval, differenceInDays, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface TimelineViewProps {
@@ -13,7 +13,7 @@ interface TimelineViewProps {
   onEditTask: (task: Task) => void;
 }
 
-type ViewMode = 'quarter' | 'year';
+type ViewMode = 'quarter' | 'year' | 'gantt';
 
 export const TimelineView = ({ tasks, onEditTask }: TimelineViewProps) => {
   const [viewMode, setViewMode] = useState<ViewMode>('quarter');
@@ -264,6 +264,102 @@ export const TimelineView = ({ tasks, onEditTask }: TimelineViewProps) => {
     );
   };
 
+  const renderGanttView = () => {
+    const sortedTasks = tasks
+      .filter(task => task.dueDate)
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    if (sortedTasks.length === 0) {
+      return (
+        <div className="text-center py-12">
+          <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Nenhuma tarefa com data de vencimento</h3>
+          <p className="text-muted-foreground">
+            Adicione datas de vencimento às tarefas para visualizar o Gantt
+          </p>
+        </div>
+      );
+    }
+
+    const earliestDate = new Date(Math.min(...sortedTasks.map(task => new Date(task.createdAt).getTime())));
+    const latestDate = new Date(Math.max(...sortedTasks.map(task => new Date(task.dueDate!).getTime())));
+    const totalDays = differenceInDays(latestDate, earliestDate) + 1;
+    const timelineDays = Array.from({ length: totalDays }, (_, i) => addDays(earliestDate, i));
+
+    return (
+      <div className="space-y-4">
+        {/* Timeline Header */}
+        <div className="grid grid-cols-12 gap-2 pb-2 border-b">
+          <div className="col-span-3 text-sm font-medium text-muted-foreground">Tarefa</div>
+          <div className="col-span-9">
+            <div className="grid grid-cols-7 gap-1 text-xs text-center">
+              {timelineDays.slice(0, 14).map(day => (
+                <div key={day.toISOString()} className="text-muted-foreground">
+                  {format(day, 'dd/MM')}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Tasks */}
+        <div className="space-y-3">
+          {sortedTasks.map(task => {
+            const startDate = new Date(task.createdAt);
+            const endDate = new Date(task.dueDate!);
+            const startOffset = differenceInDays(startDate, earliestDate);
+            const duration = differenceInDays(endDate, startDate) + 1;
+            const widthPercentage = Math.max(10, (duration / 14) * 100);
+            const leftPercentage = (startOffset / 14) * 100;
+
+            return (
+              <div key={task.id} className="grid grid-cols-12 gap-2 items-center">
+                <div className="col-span-3">
+                  <div
+                    className={`p-2 rounded border-l-2 cursor-pointer hover:bg-muted/50 ${getPriorityColor(task.priority)}`}
+                    onClick={() => onEditTask(task)}
+                  >
+                    <div className="font-medium text-sm truncate">{task.title}</div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Badge variant={getStatusColor(task.status)} className="text-xs">
+                        {task.status === 'todo' ? 'À Fazer' : 
+                         task.status === 'progress' ? 'Progresso' : 'Concluído'}
+                      </Badge>
+                      {task.assignee && (
+                        <span className="flex items-center gap-1">
+                          <User className="h-3 w-3" />
+                          {task.assignee}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="col-span-9 relative h-8">
+                  <div className="absolute inset-0 bg-muted rounded"></div>
+                  <div
+                    className={`absolute h-full rounded cursor-pointer transition-all hover:opacity-80 ${
+                      task.status === 'done' ? 'bg-secondary' : 
+                      task.status === 'progress' ? 'bg-primary' : 'bg-destructive/50'
+                    }`}
+                    style={{
+                      left: `${Math.min(leftPercentage, 90)}%`,
+                      width: `${Math.min(widthPercentage, 100 - Math.min(leftPercentage, 90))}%`
+                    }}
+                    onClick={() => onEditTask(task)}
+                  >
+                    <div className="flex items-center justify-center h-full text-xs text-primary-foreground font-medium">
+                      {duration}d
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -296,12 +392,14 @@ export const TimelineView = ({ tasks, onEditTask }: TimelineViewProps) => {
           <SelectContent>
             <SelectItem value="quarter">Trimestre</SelectItem>
             <SelectItem value="year">Ano</SelectItem>
+            <SelectItem value="gantt">Gantt</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {/* Content */}
-      {viewMode === 'quarter' ? renderQuarterView() : renderYearView()}
+      {viewMode === 'quarter' ? renderQuarterView() : 
+       viewMode === 'year' ? renderYearView() : renderGanttView()}
       
       {tasks.length === 0 && (
         <div className="text-center py-12">
