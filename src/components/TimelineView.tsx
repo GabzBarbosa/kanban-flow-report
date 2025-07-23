@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react';
-import { Clock, User, Calendar, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Clock, User, Calendar, AlertCircle, CheckCircle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Task } from '@/types/task';
-import { format, isToday, isYesterday, isTomorrow, differenceInDays } from 'date-fns';
+import { format, startOfQuarter, endOfQuarter, getQuarter, getYear, eachMonthOfInterval, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface TimelineViewProps {
@@ -13,33 +13,30 @@ interface TimelineViewProps {
   onEditTask: (task: Task) => void;
 }
 
-type SortOption = 'created' | 'due' | 'updated' | 'priority';
+type ViewMode = 'quarter' | 'year';
 
 export const TimelineView = ({ tasks, onEditTask }: TimelineViewProps) => {
-  const [sortBy, setSortBy] = useState<SortOption>('created');
+  const [viewMode, setViewMode] = useState<ViewMode>('quarter');
+  const [currentDate, setCurrentDate] = useState(new Date());
 
-  const formatDateRelative = (date: Date) => {
-    if (isToday(date)) return 'Hoje';
-    if (isYesterday(date)) return 'Ontem';
-    if (isTomorrow(date)) return 'Amanhã';
-    
-    const daysDiff = differenceInDays(date, new Date());
-    if (daysDiff > 0 && daysDiff <= 7) {
-      return `Em ${daysDiff} ${daysDiff === 1 ? 'dia' : 'dias'}`;
-    }
-    if (daysDiff < 0 && daysDiff >= -7) {
-      return `${Math.abs(daysDiff)} ${Math.abs(daysDiff) === 1 ? 'dia' : 'dias'} atrás`;
-    }
-    
-    return format(date, 'dd/MM/yyyy', { locale: ptBR });
+  const getQuarterName = (quarter: number) => {
+    return `Q${quarter}`;
   };
 
-  const getPriorityIcon = (priority: string) => {
+  const getMonthName = (month: number) => {
+    const monthNames = [
+      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+    return monthNames[month];
+  };
+
+  const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high': return <AlertCircle className="h-4 w-4 text-destructive" />;
-      case 'medium': return <Clock className="h-4 w-4 text-warning" />;
-      case 'low': return <CheckCircle className="h-4 w-4 text-muted-foreground" />;
-      default: return null;
+      case 'high': return 'border-l-destructive';
+      case 'medium': return 'border-l-warning';
+      case 'low': return 'border-l-muted-foreground';
+      default: return 'border-l-border';
     }
   };
 
@@ -52,149 +49,269 @@ export const TimelineView = ({ tasks, onEditTask }: TimelineViewProps) => {
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'todo': return <XCircle className="h-4 w-4" />;
-      case 'progress': return <Clock className="h-4 w-4" />;
-      case 'done': return <CheckCircle className="h-4 w-4" />;
-      default: return null;
+  const navigatePeriod = (direction: 'prev' | 'next') => {
+    const newDate = new Date(currentDate);
+    if (viewMode === 'quarter') {
+      const currentQuarter = getQuarter(currentDate);
+      const currentYear = getYear(currentDate);
+      
+      if (direction === 'next') {
+        if (currentQuarter === 4) {
+          newDate.setFullYear(currentYear + 1, 0, 1);
+        } else {
+          newDate.setMonth((currentQuarter) * 3, 1);
+        }
+      } else {
+        if (currentQuarter === 1) {
+          newDate.setFullYear(currentYear - 1, 9, 1);
+        } else {
+          newDate.setMonth((currentQuarter - 2) * 3, 1);
+        }
+      }
+    } else {
+      if (direction === 'next') {
+        newDate.setFullYear(getYear(currentDate) + 1, 0, 1);
+      } else {
+        newDate.setFullYear(getYear(currentDate) - 1, 0, 1);
+      }
     }
+    setCurrentDate(newDate);
   };
 
-  const sortedTasks = useMemo(() => {
-    const sortedArray = [...tasks].sort((a, b) => {
-      switch (sortBy) {
-        case 'created':
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        case 'updated':
-          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-        case 'due':
-          if (!a.dueDate && !b.dueDate) return 0;
-          if (!a.dueDate) return 1;
-          if (!b.dueDate) return -1;
-          return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-        case 'priority':
-          const priorityOrder = { high: 3, medium: 2, low: 1 };
-          return priorityOrder[b.priority] - priorityOrder[a.priority];
-        default:
-          return 0;
-      }
+  const getTasksForDate = (date: Date) => {
+    return tasks.filter(task => {
+      if (task.dueDate && isSameDay(new Date(task.dueDate), date)) return true;
+      if (isSameDay(new Date(task.createdAt), date)) return true;
+      return false;
     });
-    return sortedArray;
-  }, [tasks, sortBy]);
+  };
+
+  const getTasksForMonth = (month: Date) => {
+    const start = startOfMonth(month);
+    const end = endOfMonth(month);
+    
+    return tasks.filter(task => {
+      if (task.dueDate && isWithinInterval(new Date(task.dueDate), { start, end })) return true;
+      if (isWithinInterval(new Date(task.createdAt), { start, end })) return true;
+      return false;
+    });
+  };
+
+  const renderQuarterView = () => {
+    const quarterStart = startOfQuarter(currentDate);
+    const quarterEnd = endOfQuarter(currentDate);
+    const months = eachMonthOfInterval({ start: quarterStart, end: quarterEnd });
+    const currentQuarter = getQuarter(currentDate);
+    const currentYear = getYear(currentDate);
+
+    return (
+      <div className="space-y-6">
+        <div className="grid gap-6 md:grid-cols-3">
+          {months.map((month, index) => {
+            const monthTasks = getTasksForMonth(month);
+            const days = eachDayOfInterval({
+              start: startOfMonth(month),
+              end: endOfMonth(month)
+            });
+
+            return (
+              <Card key={index} className="h-fit">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg">
+                    {getMonthName(month.getMonth())} {month.getFullYear()}
+                  </CardTitle>
+                  <div className="text-sm text-muted-foreground">
+                    {monthTasks.length} tarefa{monthTasks.length !== 1 ? 's' : ''}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-7 gap-1 mb-4">
+                    {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
+                      <div key={day} className="text-xs text-center font-medium text-muted-foreground p-1">
+                        {day}
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="grid grid-cols-7 gap-1">
+                    {/* Dias vazios no início do mês */}
+                    {Array.from({ length: startOfMonth(month).getDay() }).map((_, i) => (
+                      <div key={`empty-${i}`} className="h-8"></div>
+                    ))}
+                    
+                    {days.map(day => {
+                      const dayTasks = getTasksForDate(day);
+                      const hasImportantTasks = dayTasks.some(task => task.priority === 'high');
+                      
+                      return (
+                        <div
+                          key={day.toISOString()}
+                          className={`
+                            h-8 flex items-center justify-center text-xs relative rounded cursor-pointer
+                            ${isSameMonth(day, month) ? 'text-foreground' : 'text-muted-foreground'}
+                            ${dayTasks.length > 0 ? 'bg-primary/10 hover:bg-primary/20' : 'hover:bg-muted'}
+                            ${hasImportantTasks ? 'ring-1 ring-destructive' : ''}
+                          `}
+                          onClick={() => dayTasks.length > 0 && onEditTask(dayTasks[0])}
+                        >
+                          {day.getDate()}
+                          {dayTasks.length > 0 && (
+                            <div className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full text-[8px] text-primary-foreground flex items-center justify-center">
+                              {dayTasks.length > 9 ? '9+' : dayTasks.length}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  {monthTasks.length > 0 && (
+                    <div className="mt-4 space-y-2 max-h-32 overflow-y-auto">
+                      {monthTasks.slice(0, 5).map(task => (
+                        <div
+                          key={task.id}
+                          className={`p-2 rounded border-l-2 cursor-pointer hover:bg-muted/50 ${getPriorityColor(task.priority)}`}
+                          onClick={() => onEditTask(task)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium truncate">{task.title}</span>
+                            <Badge variant={getStatusColor(task.status)} className="text-xs">
+                              {task.status === 'todo' ? 'À Fazer' : 
+                               task.status === 'progress' ? 'Progresso' : 'Concluído'}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                      {monthTasks.length > 5 && (
+                        <div className="text-xs text-muted-foreground text-center py-1">
+                          +{monthTasks.length - 5} tarefa{monthTasks.length - 5 !== 1 ? 's' : ''}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderYearView = () => {
+    const currentYear = getYear(currentDate);
+    const quarters = [1, 2, 3, 4];
+
+    return (
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {quarters.map(quarter => {
+          const quarterStart = new Date(currentYear, (quarter - 1) * 3, 1);
+          const quarterEnd = endOfQuarter(quarterStart);
+          const quarterTasks = tasks.filter(task => {
+            const taskDate = task.dueDate ? new Date(task.dueDate) : new Date(task.createdAt);
+            return isWithinInterval(taskDate, { start: quarterStart, end: quarterEnd });
+          });
+
+          return (
+            <Card key={quarter} className="h-fit">
+              <CardHeader>
+                <CardTitle className="text-lg">
+                  {getQuarterName(quarter)} {currentYear}
+                </CardTitle>
+                <div className="text-sm text-muted-foreground">
+                  {quarterTasks.length} tarefa{quarterTasks.length !== 1 ? 's' : ''}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {quarterTasks.slice(0, 8).map(task => (
+                    <div
+                      key={task.id}
+                      className={`p-3 rounded border-l-2 cursor-pointer hover:bg-muted/50 ${getPriorityColor(task.priority)}`}
+                      onClick={() => onEditTask(task)}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium truncate">{task.title}</span>
+                        <Badge variant={getStatusColor(task.status)} className="text-xs">
+                          {task.status === 'todo' ? 'À Fazer' : 
+                           task.status === 'progress' ? 'Progresso' : 'Concluído'}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        {task.dueDate && (
+                          <span>{format(new Date(task.dueDate), 'dd/MM', { locale: ptBR })}</span>
+                        )}
+                        {task.assignee && (
+                          <span className="flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            {task.assignee}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {quarterTasks.length > 8 && (
+                    <div className="text-xs text-muted-foreground text-center py-2">
+                      +{quarterTasks.length - 8} tarefa{quarterTasks.length - 8 !== 1 ? 's' : ''}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Timeline de Tarefas</h2>
-          <p className="text-sm text-muted-foreground">
-            Visualize suas tarefas em ordem cronológica
-          </p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h2 className="text-2xl font-bold">Visão Cronológica</h2>
+            <p className="text-sm text-muted-foreground">
+              {viewMode === 'quarter' 
+                ? `${getQuarterName(getQuarter(currentDate))} ${getYear(currentDate)}`
+                : `Ano ${getYear(currentDate)}`
+              }
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigatePeriod('prev')}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigatePeriod('next')}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         
-        <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Ordenar por..." />
+        <Select value={viewMode} onValueChange={(value: ViewMode) => setViewMode(value)}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Visualização..." />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="created">Data de Criação</SelectItem>
-            <SelectItem value="updated">Última Atualização</SelectItem>
-            <SelectItem value="due">Data de Vencimento</SelectItem>
-            <SelectItem value="priority">Prioridade</SelectItem>
+            <SelectItem value="quarter">Trimestre</SelectItem>
+            <SelectItem value="year">Ano</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      {/* Timeline */}
-      <div className="relative">
-        {/* Timeline line */}
-        <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-border"></div>
-        
-        <div className="space-y-6">
-          {sortedTasks.map((task, index) => (
-            <div key={task.id} className="relative">
-              {/* Timeline dot */}
-              <div className="absolute left-4 w-4 h-4 bg-primary rounded-full border-2 border-background z-10"></div>
-              
-              {/* Task card */}
-              <div className="ml-12">
-                <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => onEditTask(task)}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          {getPriorityIcon(task.priority)}
-                          <h3 className="font-semibold text-lg">{task.title}</h3>
-                        </div>
-                        
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {sortBy === 'created' && formatDateRelative(new Date(task.createdAt))}
-                            {sortBy === 'updated' && formatDateRelative(new Date(task.updatedAt))}
-                            {sortBy === 'due' && task.dueDate && formatDateRelative(new Date(task.dueDate))}
-                            {sortBy === 'priority' && `Prioridade ${task.priority}`}
-                          </div>
-                          
-                          {task.assignee && (
-                            <div className="flex items-center gap-1">
-                              <User className="h-3 w-3" />
-                              {task.assignee}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <Badge variant={getStatusColor(task.status)} className="flex items-center gap-1">
-                          {getStatusIcon(task.status)}
-                          {task.status === 'todo' ? 'À Fazer' : 
-                           task.status === 'progress' ? 'Em Progresso' : 'Concluído'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  
-                  {task.description && (
-                    <CardContent className="pt-0">
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {task.description}
-                      </p>
-                      
-                      <div className="flex items-center justify-between mt-3">
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <span>Criado: {format(new Date(task.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</span>
-                          {task.dueDate && (
-                            <span>Vence: {format(new Date(task.dueDate), 'dd/MM/yyyy', { locale: ptBR })}</span>
-                          )}
-                        </div>
-                        
-                        {task.area && (
-                          <Badge variant="outline" className="text-xs">
-                            {task.area}
-                          </Badge>
-                        )}
-                      </div>
-                    </CardContent>
-                  )}
-                </Card>
-              </div>
-            </div>
-          ))}
-          
-          {sortedTasks.length === 0 && (
-            <div className="text-center py-12">
-              <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Nenhuma tarefa encontrada</h3>
-              <p className="text-muted-foreground">
-                Crie sua primeira tarefa para ver a timeline
-              </p>
-            </div>
-          )}
+      {/* Content */}
+      {viewMode === 'quarter' ? renderQuarterView() : renderYearView()}
+      
+      {tasks.length === 0 && (
+        <div className="text-center py-12">
+          <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Nenhuma tarefa encontrada</h3>
+          <p className="text-muted-foreground">
+            Crie sua primeira tarefa para ver a visão cronológica
+          </p>
         </div>
-      </div>
+      )}
     </div>
   );
 };
