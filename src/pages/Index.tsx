@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Plus, BarChart3, Download, Calendar, Kanban } from 'lucide-react';
+import { Plus, BarChart3, Download, Calendar, Kanban, Clock } from 'lucide-react';
 import { KanbanBoard } from '@/components/KanbanBoard';
 import { CalendarView } from '@/components/CalendarView';
+import { TimelineView } from '@/components/TimelineView';
 import { N8nConfig } from '@/components/N8nConfig';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -46,7 +47,7 @@ const Index = () => {
       {/* Main Content */}
       <main className="container mx-auto px-6 py-6">
         <Tabs defaultValue="kanban" className="space-y-6">
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
+          <TabsList className="grid w-full max-w-lg mx-auto grid-cols-3">
             <TabsTrigger value="kanban" className="flex items-center gap-2">
               <Kanban className="h-4 w-4" />
               Kanban
@@ -54,6 +55,10 @@ const Index = () => {
             <TabsTrigger value="calendar" className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               Calendário
+            </TabsTrigger>
+            <TabsTrigger value="timeline" className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Timeline
             </TabsTrigger>
           </TabsList>
 
@@ -72,6 +77,17 @@ const Index = () => {
             <div className="grid lg:grid-cols-4 gap-6">
               <div className="lg:col-span-3">
                 <CalendarView tasks={tasks} onEditTask={handleEditTask} />
+              </div>
+              <div className="lg:col-span-1">
+                <N8nConfig tasks={tasks} />
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="timeline" className="space-y-6">
+            <div className="grid lg:grid-cols-4 gap-6">
+              <div className="lg:col-span-3">
+                <TimelineView tasks={tasks} onEditTask={handleEditTask} />
               </div>
               <div className="lg:col-span-1">
                 <N8nConfig tasks={tasks} />
