@@ -207,7 +207,43 @@ export function KanbanBoard({ onTasksChange, onEditTask }: KanbanBoardProps) {
     }
   };
 
-  const handleSaveTask = (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const sendTaskToN8n = async (task: Task, action: 'created' | 'updated') => {
+    const webhookUrl = localStorage.getItem('n8n-webhook-url');
+    if (!webhookUrl) return;
+
+    const taskData = {
+      action,
+      timestamp: new Date().toISOString(),
+      source: 'TaskFlow - Kanban',
+      task: {
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        status: task.status,
+        priority: task.priority,
+        assignee: task.assignee,
+        area: task.area,
+        dueDate: task.dueDate,
+        createdAt: task.createdAt,
+        updatedAt: task.updatedAt
+      }
+    };
+
+    try {
+      await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        mode: "no-cors",
+        body: JSON.stringify(taskData),
+      });
+    } catch (error) {
+      console.error("Erro ao enviar tarefa para n8n:", error);
+    }
+  };
+
+  const handleSaveTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (editingTask) {
       // Editar tarefa existente
       const updatedTask = {
@@ -228,6 +264,9 @@ export function KanbanBoard({ onTasksChange, onEditTask }: KanbanBoardProps) {
           : column.tasks
       })));
 
+      // Enviar tarefa atualizada para n8n
+      await sendTaskToN8n(updatedTask, 'updated');
+
       toast({
         title: "Tarefa atualizada!",
         description: `"${updatedTask.title}" foi atualizada com sucesso.`,
@@ -246,6 +285,9 @@ export function KanbanBoard({ onTasksChange, onEditTask }: KanbanBoardProps) {
           ? { ...column, tasks: [...column.tasks, newTask] }
           : column
       ));
+
+      // Enviar nova tarefa para n8n
+      await sendTaskToN8n(newTask, 'created');
 
       toast({
         title: "Tarefa criada!",
