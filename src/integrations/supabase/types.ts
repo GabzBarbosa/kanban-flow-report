@@ -14,7 +14,121 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      task_attachments: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          size: number
+          task_id: string
+          type: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          size: number
+          task_id: string
+          type: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          size?: number
+          task_id?: string
+          type?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_attachments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_evolutions: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          task_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          task_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_evolutions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          area: string | null
+          assignee: string | null
+          created_at: string
+          description: string
+          due_date: string | null
+          id: string
+          priority: Database["public"]["Enums"]["task_priority"]
+          research: string
+          results: string
+          status: Database["public"]["Enums"]["task_status"]
+          tests: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          area?: string | null
+          assignee?: string | null
+          created_at?: string
+          description?: string
+          due_date?: string | null
+          id?: string
+          priority?: Database["public"]["Enums"]["task_priority"]
+          research?: string
+          results?: string
+          status?: Database["public"]["Enums"]["task_status"]
+          tests?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          area?: string | null
+          assignee?: string | null
+          created_at?: string
+          description?: string
+          due_date?: string | null
+          id?: string
+          priority?: Database["public"]["Enums"]["task_priority"]
+          research?: string
+          results?: string
+          status?: Database["public"]["Enums"]["task_status"]
+          tests?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +137,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      task_priority: "low" | "medium" | "high"
+      task_status: "todo" | "progress" | "done"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +265,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      task_priority: ["low", "medium", "high"],
+      task_status: ["todo", "progress", "done"],
+    },
   },
 } as const
